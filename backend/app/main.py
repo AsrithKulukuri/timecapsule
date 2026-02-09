@@ -71,6 +71,9 @@ async def health_check():
 async def startup_event():
     logger.info("Time Capsule API starting up...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Frontend URL: {settings.FRONTEND_URL}")
+    logger.info(f"Storage Bucket: {settings.STORAGE_BUCKET}")
+    logger.info(f"Allowed CORS origins: {allowed_origins}")
 
 
 @app.on_event("shutdown")

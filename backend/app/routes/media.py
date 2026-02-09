@@ -124,6 +124,10 @@ async def get_media_url(
     Only works if the capsule is unlocked.
     Signed URL expires after 1 hour.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Getting media URL for media_id: {media_id}, user: {current_user.get('id')}")
 
     # Get media record
     media_response = supabase_admin.table("media")\
@@ -132,6 +136,7 @@ async def get_media_url(
         .execute()
 
     if not media_response.data:
+        logger.warning(f"Media not found: {media_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Media not found"
@@ -139,6 +144,7 @@ async def get_media_url(
 
     media = media_response.data[0]
     capsule = media["capsules"]
+    logger.info(f"Found media: {media['filename']}, capsule_id: {capsule['id']}")
 
     # Verify access to capsule
     await CapsuleService.get_capsule_by_id(capsule["id"], current_user["id"])
@@ -147,8 +153,10 @@ async def get_media_url(
     unlock_date = datetime.fromisoformat(
         capsule["unlock_date"].replace("Z", "+00:00"))
     is_unlocked = datetime.now(timezone.utc) >= unlock_date
+    logger.info(f"Capsule unlock check: unlock_date={unlock_date}, is_unlocked={is_unlocked}")
 
     if not is_unlocked:
+        logger.warning(f"Capsule still locked: {capsule['id']}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Capsule is still locked. Media will be available after unlock date."
@@ -156,18 +164,27 @@ async def get_media_url(
 
     # Generate signed URL (valid for 1 hour)
     try:
+        logger.info(f"Creating signed URL for file: {media['file_path']}")
         signed_url_response = supabase_admin.storage.from_(settings.STORAGE_BUCKET)\
             .create_signed_url(media["file_path"], 3600)
+        
+        logger.info(f"Signed URL response type: {type(signed_url_response)}, value: {signed_url_response}")
 
         # Handle both possible response formats
-        signed_url = signed_url_response.get("signedURL") or signed_url_response.get("signed_url")
-        
+        if isinstance(signed_url_response, dict):
+            signed_url = signed_url_response.get(
+                "signedURL") or signed_url_response.get("signed_url")
+        else:
+            signed_url = str(signed_url_response)
+
         if not signed_url:
+            logger.error(f"Unexpected response format: {signed_url_response}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to generate signed URL: Invalid response format"
             )
 
+        logger.info(f"Successfully generated signed URL for media: {media_id}")
         return {
             "url": signed_url,
             "expires_in": 3600
@@ -176,8 +193,8 @@ async def get_media_url(
     except HTTPException:
         raise
     except Exception as e:
-        import logging
-        logging.error(f"Error generating signed URL for {media['file_path']}: {str(e)}")
+        logger.error(
+            f"Error generating signed URL for {media['file_path']}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate URL: {str(e)}"
