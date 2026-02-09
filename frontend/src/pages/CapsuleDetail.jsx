@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore'
 import Navbar from '../components/Navbar'
 import MediaItem from '../components/MediaItem'
 import LoadingSpinner from '../components/LoadingSpinner'
+import CountdownTimer from '../components/CountdownTimer'
 import toast from 'react-hot-toast'
 
 function CapsuleDetail() {
@@ -94,6 +95,20 @@ function CapsuleDetail() {
         }))
     }
 
+    const handleCapsuleUnlock = async () => {
+        // Reload capsule data when unlock time is reached
+        try {
+            const updatedCapsule = await capsuleService.getCapsule(id)
+            setCapsule(updatedCapsule)
+            toast.success('🎉 Capsule unlocked! Your memories are now accessible!', {
+                icon: '🎉',
+                duration: 4000,
+            })
+        } catch (error) {
+            console.error('Error reloading capsule:', error)
+        }
+    }
+
     if (loading) {
         return <LoadingSpinner fullScreen />
     }
@@ -171,6 +186,14 @@ function CapsuleDetail() {
                         </div>
                     )}
                 </motion.div>
+
+                {/* Countdown Timer */}
+                {!isUnlocked && (
+                    <CountdownTimer
+                        unlockDate={capsule.unlock_date}
+                        onUnlock={handleCapsuleUnlock}
+                    />
+                )}
 
                 {/* Unlock Animation */}
                 {isUnlocked && (
