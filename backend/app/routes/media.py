@@ -4,7 +4,7 @@ from app.dependencies import get_current_user
 from app.config import settings
 from app.services.capsule_service import CapsuleService
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter()
 
@@ -82,7 +82,7 @@ async def upload_media(
             "filename": file.filename,
             "file_path": unique_filename,
             "file_type": file_type_category,
-            "uploaded_at": datetime.utcnow().isoformat()
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
         }
 
         db_response = supabase_admin.table(
@@ -146,7 +146,7 @@ async def get_media_url(
     # Check if capsule is unlocked
     unlock_date = datetime.fromisoformat(
         capsule["unlock_date"].replace("Z", "+00:00"))
-    is_unlocked = datetime.utcnow() >= unlock_date.replace(tzinfo=None)
+    is_unlocked = datetime.now(timezone.utc) >= unlock_date
 
     if not is_unlocked:
         raise HTTPException(
@@ -206,7 +206,7 @@ async def delete_media(
     # Check if capsule is unlocked
     unlock_date = datetime.fromisoformat(
         capsule["unlock_date"].replace("Z", "+00:00"))
-    is_unlocked = datetime.utcnow() >= unlock_date.replace(tzinfo=None)
+    is_unlocked = datetime.now(timezone.utc) >= unlock_date
 
     if is_unlocked:
         raise HTTPException(
