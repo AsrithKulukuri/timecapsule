@@ -15,8 +15,14 @@ app = FastAPI(
 )
 
 # CORS middleware - configure for production
+
+
 def _parse_origins(value: str) -> list[str]:
-    return [origin.strip() for origin in value.split(",") if origin.strip()]
+    return [
+        origin.strip().rstrip("/")
+        for origin in value.split(",")
+        if origin.strip()
+    ]
 
 
 allowed_origins = _parse_origins(settings.FRONTEND_URL)
