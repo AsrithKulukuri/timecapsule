@@ -15,17 +15,22 @@ app = FastAPI(
 )
 
 # CORS middleware - configure for production
-allowed_origins = [
-    settings.FRONTEND_URL,
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:3000",
-]
+def _parse_origins(value: str) -> list[str]:
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
 
-if settings.ENVIRONMENT == "production":
-    # Add your production frontend URL
-    allowed_origins = [settings.FRONTEND_URL]
+
+allowed_origins = _parse_origins(settings.FRONTEND_URL)
+
+if settings.ENVIRONMENT != "production":
+    allowed_origins.extend([
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:3000",
+    ])
+
+# De-duplicate while preserving order
+allowed_origins = list(dict.fromkeys(allowed_origins))
 
 app.add_middleware(
     CORSMiddleware,
