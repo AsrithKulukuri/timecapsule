@@ -156,15 +156,28 @@ async def get_media_url(
 
     # Generate signed URL (valid for 1 hour)
     try:
-        signed_url = supabase_admin.storage.from_(settings.STORAGE_BUCKET)\
+        signed_url_response = supabase_admin.storage.from_(settings.STORAGE_BUCKET)\
             .create_signed_url(media["file_path"], 3600)
 
+        # Handle both possible response formats
+        signed_url = signed_url_response.get("signedURL") or signed_url_response.get("signed_url")
+        
+        if not signed_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate signed URL: Invalid response format"
+            )
+
         return {
-            "url": signed_url["signedURL"],
+            "url": signed_url,
             "expires_in": 3600
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
+        import logging
+        logging.error(f"Error generating signed URL for {media['file_path']}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate URL: {str(e)}"
