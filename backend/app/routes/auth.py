@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
 import secrets
+from jose import jwt
 from app.supabase_client import supabase, supabase_admin
 from app.schemas import UserSignup, UserLogin, TokenResponse, OtpStartRequest, OtpVerifyRequest, EmailVerificationRequest, EmailVerifyRequest
 from app.dependencies import get_current_user
 from app.services.email_service import EmailService
+from app.config import settings
 
 router = APIRouter()
 
@@ -319,7 +321,7 @@ async def otp_start(payload: OtpStartRequest):
         )
 
 
-@router.post("/otp/verify")
+@router.post("/otp/verify", response_model=TokenResponse)
 async def otp_verify(payload: OtpVerifyRequest):
     """
     Verify an OTP for login or password recovery.
@@ -381,9 +383,14 @@ async def otp_verify(payload: OtpVerifyRequest):
                 user.id,
                 {"user_metadata": metadata}
             )
-            return {"message": "Password updated successfully"}
+            return {
+                "message": "Password updated successfully",
+                "access_token": "",
+                "token_type": "bearer",
+                "user": {"id": user.id, "email": user.email}
+            }
 
-        # OTP login - clear the OTP and return user info
+        # OTP login - create access token
         username = metadata.get("username", "")
         metadata.pop("otp_code", None)
         metadata.pop("otp_expires_at", None)
@@ -392,8 +399,32 @@ async def otp_verify(payload: OtpVerifyRequest):
             {"user_metadata": metadata}
         )
 
+        # Generate JWT access token
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+        token_payload = {
+            "sub": user.id,  # subject (user ID)
+            "email": user.email,
+            "user_metadata": {
+                "username": username,
+                "email_verified": metadata.get("email_verified", False)
+            },
+            "iat": int(now.timestamp()),  # issued at
+            "exp": int(expires_at.timestamp()),  # expiration
+            "aud": "authenticated",
+            "iss": "supabase"
+        }
+
+        access_token = jwt.encode(
+            token_payload,
+            settings.SUPABASE_JWT_SECRET,
+            algorithm=settings.ALGORITHM
+        )
+
         return {
-            "message": "OTP verified successfully",
+            "access_token": access_token,
+            "token_type": "bearer",
             "user": {
                 "id": user.id,
                 "email": user.email,
@@ -404,6 +435,7 @@ async def otp_verify(payload: OtpVerifyRequest):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"OTP verification error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"OTP verification failed: {str(e)}"
