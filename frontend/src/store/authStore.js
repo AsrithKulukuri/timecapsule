@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { authService } from '../services/authService'
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
     user: null,
     loading: true,
 
@@ -20,7 +20,7 @@ export const useAuthStore = create((set) => ({
             console.log('Attempting login...')
             const data = await authService.login(email, password)
             console.log('Login response:', data)
-            set.getState().setSession(data)
+            get().setSession(data)
             console.log('User set, login complete')
             return data
         } catch (error) {
@@ -34,7 +34,7 @@ export const useAuthStore = create((set) => ({
             console.log('Attempting OTP login...')
             const data = await authService.verifyOtp(email, token, 'login')
             console.log('OTP login response:', data)
-            set.getState().setSession(data)
+            get().setSession(data)
             return data
         } catch (error) {
             console.error('OTP login error in store:', error)
