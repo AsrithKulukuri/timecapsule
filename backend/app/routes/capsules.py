@@ -26,19 +26,29 @@ async def create_capsule(
         capsule = await CapsuleService.create_capsule(capsule_data, current_user["id"])
         print(f"Capsule created: {capsule}")
 
-        # Send creation notification email
-        if current_user.get("email"):
-            sent = EmailService.send_capsule_created_email(
-                current_user["email"], capsule)
-            if sent:
-                supabase_admin.table("capsules")\
-                    .update({"created_email_sent_at": datetime.now(timezone.utc).isoformat()})\
-                    .eq("id", capsule["id"])\
-                    .execute()
+        # Send creation notification email (non-blocking, don't fail if email fails)
+        try:
+            if current_user.get("email"):
+                sent = EmailService.send_capsule_created_email(
+                    current_user["email"], capsule)
+                if sent:
+                    supabase_admin.table("capsules")\
+                        .update({"created_email_sent_at": datetime.now(timezone.utc).isoformat()})\
+                        .eq("id", capsule["id"])\
+                        .execute()
+        except Exception as email_err:
+            print(f"Email send failed (non-blocking): {str(email_err)}")
+            # Don't fail the capsule creation if email fails
+        
         return capsule
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Capsule creation error: {type(e).__name__}: {str(e)}")
-        raise
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create capsule: {str(e)}"
+        )
 
 
 @router.get("/", response_model=List[dict])
