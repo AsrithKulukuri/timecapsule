@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -32,7 +33,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     class Config:
-        env_file = ".env"
+        # Look for .env file in the backend directory
+        env_file = Path(__file__).parent.parent / ".env"
+        env_file_encoding = "utf-8"
 
 
 settings = Settings()

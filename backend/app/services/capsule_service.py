@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException, status
-from app.supabase_client import supabase, supabase_admin
-from app.schemas import CapsuleCreate, CapsuleUpdate, CapsuleResponse
+from ..supabase_client import supabase, supabase_admin
+from ..schemas import CapsuleCreate, CapsuleUpdate, CapsuleResponse
 
 
 class CapsuleService:
@@ -36,7 +36,8 @@ class CapsuleService:
                 "capsules").insert(capsule_dict).execute()
 
             print(f"Insert response: {response}")
-            print(f"Response data: {response.data if hasattr(response, 'data') else 'NO DATA ATTR'}")
+            print(
+                f"Response data: {response.data if hasattr(response, 'data') else 'NO DATA ATTR'}")
 
             if not response.data:
                 raise HTTPException(
@@ -62,7 +63,8 @@ class CapsuleService:
         except HTTPException:
             raise
         except Exception as e:
-            print(f"Capsule creation database error: {type(e).__name__}: {str(e)}")
+            print(
+                f"Capsule creation database error: {type(e).__name__}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create capsule: {str(e)}"

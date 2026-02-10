@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from app.schemas import CapsuleCreate, CapsuleUpdate, CapsuleResponse
-from app.dependencies import get_current_user
-from app.services.capsule_service import CapsuleService
-from app.services.email_service import EmailService
-from app.supabase_client import supabase_admin
+from ..schemas import CapsuleCreate, CapsuleUpdate, CapsuleResponse
+from ..dependencies import get_current_user
+from ..services.capsule_service import CapsuleService
+from ..services.email_service import EmailService
+from ..supabase_client import supabase_admin
 from datetime import datetime, timezone
 
 router = APIRouter()
@@ -22,7 +22,7 @@ async def create_capsule(
     try:
         print(f"Creating capsule for user {current_user['id']}")
         print(f"Capsule data: {capsule_data}")
-        
+
         capsule = await CapsuleService.create_capsule(capsule_data, current_user["id"])
         print(f"Capsule created: {capsule}")
 

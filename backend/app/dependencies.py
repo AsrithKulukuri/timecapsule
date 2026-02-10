@@ -2,8 +2,8 @@ from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from jose import JWTError, jwt
-from app.config import settings
-from app.supabase_client import supabase
+from .config import settings
+from .supabase_client import supabase
 import base64
 import json
 

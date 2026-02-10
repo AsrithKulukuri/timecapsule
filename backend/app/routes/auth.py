@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
 import secrets
 from jose import jwt
-from app.supabase_client import supabase, supabase_admin
-from app.schemas import UserSignup, UserLogin, TokenResponse, OtpStartRequest, OtpVerifyRequest, EmailVerificationRequest, EmailVerifyRequest
-from app.dependencies import get_current_user
-from app.services.email_service import EmailService
-from app.config import settings
+from ..supabase_client import supabase, supabase_admin
+from ..schemas import UserSignup, UserLogin, TokenResponse, OtpStartRequest, OtpVerifyRequest, EmailVerificationRequest, EmailVerifyRequest
+from ..dependencies import get_current_user
+from ..services.email_service import EmailService
+from ..config import settings
 
 router = APIRouter()
 
@@ -401,7 +401,8 @@ async def otp_verify(payload: OtpVerifyRequest):
 
         # Generate JWT access token
         now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_at = now + \
+            timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
         token_payload = {
             "sub": user.id,  # subject (user ID)
