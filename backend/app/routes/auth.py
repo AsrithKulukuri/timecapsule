@@ -46,7 +46,7 @@ async def signup(user_data: UserSignup):
             "email_verified": False,
             "username": user_data.username,
             "verification_code": verification_code,
-            "verification_expires_at": (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+            "verification_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
         }
 
         supabase_admin.auth.admin.update_user_by_id(
@@ -270,16 +270,48 @@ async def verify_email(payload: EmailVerifyRequest):
 @router.post("/otp/start")
 async def otp_start(payload: OtpStartRequest):
     """
-    Send an OTP for login or recovery.
+    Send an OTP via Resend for login or recovery.
     """
     try:
-        supabase.auth.sign_in_with_otp({
-            "email": payload.email,
-            "options": {
-                "should_create_user": False
-            }
-        })
-        return {"message": "OTP sent"}
+        # Generate OTP code
+        otp_code = "".join(secrets.choice("0123456789") for _ in range(6))
+
+        # Store OTP in a file/redis (for now using simple in-memory, but production should use Redis/DB)
+        # We'll store it in user metadata temporarily
+        try:
+            user_response = supabase_admin.auth.admin.list_users()
+            user = None
+            for u in user_response:
+                if u.email == payload.email:
+                    user = u
+                    break
+        except:
+            # User doesn't exist yet, which is fine for OTP login (can be new user)
+            user = None
+
+        if user:
+            # Update user metadata with OTP
+            metadata = user.user_metadata.copy() if hasattr(user, 'user_metadata') else {}
+            metadata.update({
+                "otp_code": otp_code,
+                "otp_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+                "otp_purpose": payload.purpose
+            })
+            supabase_admin.auth.admin.update_user_by_id(
+                user.id, {"user_metadata": metadata})
+
+        # Send OTP via Resend
+        email_sent = EmailService.send_otp_email(payload.email, otp_code)
+
+        if not email_sent:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send OTP email. Please try again."
+            )
+
+        return {"message": "OTP sent successfully", "email": payload.email}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -293,21 +325,46 @@ async def otp_verify(payload: OtpVerifyRequest):
     Verify an OTP for login or password recovery.
     """
     try:
-        response = supabase.auth.verify_otp({
-            "email": payload.email,
-            "token": payload.token,
-            "type": "email"
-        })
+        # Find user by email
+        user_list = supabase_admin.auth.admin.list_users()
+        user = None
+        for u in user_list:
+            if u.email == payload.email:
+                user = u
+                break
 
-        user = getattr(response, 'user', None)
-        session = getattr(response, 'session', None)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
 
+        # Validate OTP code from user metadata
+        metadata = user.user_metadata if hasattr(
+            user, 'user_metadata') and user.user_metadata else {}
+        stored_code = metadata.get("otp_code")
+        expires_at_str = metadata.get("otp_expires_at")
+
+        if not stored_code or stored_code != payload.token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP code"
+            )
+
+        # Check if OTP is expired
+        if expires_at_str:
+            try:
+                expires_at = datetime.fromisoformat(expires_at_str)
+                if datetime.now(timezone.utc) > expires_at:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="OTP expired"
+                    )
+            except ValueError:
+                pass
+
+        # Handle password recovery
         if payload.purpose == "recovery":
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid OTP"
-                )
             if not payload.new_password:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -317,20 +374,26 @@ async def otp_verify(payload: OtpVerifyRequest):
                 user.id,
                 {"password": payload.new_password}
             )
-            return {"message": "Password updated"}
-
-        if not user or not session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid OTP"
+            # Clear OTP from metadata
+            metadata.pop("otp_code", None)
+            metadata.pop("otp_expires_at", None)
+            supabase_admin.auth.admin.update_user_by_id(
+                user.id,
+                {"user_metadata": metadata}
             )
+            return {"message": "Password updated successfully"}
 
-        username = user.user_metadata.get(
-            "username", "") if hasattr(user, 'user_metadata') else ""
+        # OTP login - clear the OTP and return user info
+        username = metadata.get("username", "")
+        metadata.pop("otp_code", None)
+        metadata.pop("otp_expires_at", None)
+        supabase_admin.auth.admin.update_user_by_id(
+            user.id,
+            {"user_metadata": metadata}
+        )
 
         return {
-            "access_token": session.access_token,
-            "token_type": "bearer",
+            "message": "OTP verified successfully",
             "user": {
                 "id": user.id,
                 "email": user.email,

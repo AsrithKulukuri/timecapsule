@@ -18,6 +18,10 @@ class EmailService:
             logger.warning("Email not configured. Skipping send.")
             return False
 
+        logger.info(f"Sending email to {to_email} with subject: {subject}")
+        logger.info(f"Using API key: {settings.RESEND_API_KEY[:20]}...")
+        logger.info(f"From: {settings.RESEND_FROM}")
+
         payload = {
             "from": settings.RESEND_FROM,
             "to": [to_email],
@@ -28,6 +32,7 @@ class EmailService:
             payload["text"] = text
 
         try:
+            logger.info(f"Posting to Resend API with payload: {payload}")
             response = httpx.post(
                 "https://api.resend.com/emails",
                 headers={
@@ -37,12 +42,15 @@ class EmailService:
                 json=payload,
                 timeout=10.0,
             )
+            logger.info(f"Resend response status: {response.status_code}")
+            logger.info(f"Resend response: {response.text}")
             if response.status_code >= 400:
-                logger.error("Resend error: %s", response.text)
+                logger.error(f"Resend error: {response.text}")
                 return False
+            logger.info(f"Email sent successfully to {to_email}")
             return True
         except Exception as exc:
-            logger.error("Email send failed: %s", str(exc))
+            logger.error(f"Email send failed: {str(exc)}", exc_info=True)
             return False
 
     @staticmethod
@@ -57,6 +65,18 @@ class EmailService:
         """
         text = f"Verify your email with this code: {verification_code}"
         return EmailService.send_email(to_email, "Verify Your Time Capsule Email", html, text)
+
+    @staticmethod
+    def send_otp_email(to_email: str, otp_code: str) -> bool:
+        html = f"""
+        <h1>Your OTP Code</h1>
+        <p>Use this code to login to Time Capsule:</p>
+        <h2 style="background: #f0f0f0; padding: 10px; border-radius: 5px;">{otp_code}</h2>
+        <p>This code will expire in 10 minutes.</p>
+        <p>If you didn't request this code, please ignore this email.</p>
+        """
+        text = f"Your Time Capsule OTP is: {otp_code} (expires in 10 minutes)"
+        return EmailService.send_email(to_email, "Your Time Capsule OTP", html, text)
 
     @staticmethod
     def send_capsule_created_email(to_email: str, capsule: dict) -> bool:
