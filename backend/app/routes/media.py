@@ -126,12 +126,13 @@ async def get_media_url(
     """
     import logging
     logger = logging.getLogger(__name__)
-    
-    logger.info(f"Getting media URL for media_id: {media_id}, user: {current_user.get('id')}")
+
+    logger.info(
+        f"Getting media URL for media_id: {media_id}, user: {current_user.get('id')}")
 
     # Get media record
     media_response = supabase_admin.table("media")\
-        .select("*, capsules(*)")\
+        .select("*, capsules!media_capsule_id_fkey(*)")\
         .eq("id", media_id)\
         .execute()
 
@@ -144,7 +145,8 @@ async def get_media_url(
 
     media = media_response.data[0]
     capsule = media["capsules"]
-    logger.info(f"Found media: {media['filename']}, capsule_id: {capsule['id']}")
+    logger.info(
+        f"Found media: {media['filename']}, capsule_id: {capsule['id']}")
 
     # Verify access to capsule
     await CapsuleService.get_capsule_by_id(capsule["id"], current_user["id"])
@@ -153,7 +155,8 @@ async def get_media_url(
     unlock_date = datetime.fromisoformat(
         capsule["unlock_date"].replace("Z", "+00:00"))
     is_unlocked = datetime.now(timezone.utc) >= unlock_date
-    logger.info(f"Capsule unlock check: unlock_date={unlock_date}, is_unlocked={is_unlocked}")
+    logger.info(
+        f"Capsule unlock check: unlock_date={unlock_date}, is_unlocked={is_unlocked}")
 
     if not is_unlocked:
         logger.warning(f"Capsule still locked: {capsule['id']}")
@@ -167,8 +170,9 @@ async def get_media_url(
         logger.info(f"Creating signed URL for file: {media['file_path']}")
         signed_url_response = supabase_admin.storage.from_(settings.STORAGE_BUCKET)\
             .create_signed_url(media["file_path"], 3600)
-        
-        logger.info(f"Signed URL response type: {type(signed_url_response)}, value: {signed_url_response}")
+
+        logger.info(
+            f"Signed URL response type: {type(signed_url_response)}, value: {signed_url_response}")
 
         # Handle both possible response formats
         if isinstance(signed_url_response, dict):
@@ -213,7 +217,7 @@ async def delete_media(
 
     # Get media record
     media_response = supabase_admin.table("media")\
-        .select("*, capsules(*)")\
+        .select("*, capsules!media_capsule_id_fkey(*)")\
         .eq("id", media_id)\
         .execute()
 

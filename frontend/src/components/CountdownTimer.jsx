@@ -58,7 +58,7 @@ function CountdownTimer({ unlockDate, onUnlock }) {
             className="glass-card p-6 mb-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30"
         >
             <p className="text-sm text-gray-400 mb-4 text-center">⏳ Time Until Unlock</p>
-            
+
             <div className="grid grid-cols-4 gap-3">
                 <motion.div
                     key={timeLeft.days}

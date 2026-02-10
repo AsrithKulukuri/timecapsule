@@ -13,9 +13,12 @@ function MediaItem({ media, isUnlocked, onDelete }) {
 
         setLoading(true)
         try {
+            console.log(`Loading media: ${media.id}`)
             const data = await mediaService.getMediaUrl(media.id)
+            console.log(`Media URL loaded: ${data.url}`)
             setMediaUrl(data.url)
         } catch (error) {
+            console.error(`Failed to load media ${media.id}:`, error)
             toast.error('Failed to load media')
         } finally {
             setLoading(false)
