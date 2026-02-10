@@ -47,8 +47,7 @@ export const useAuthStore = create((set) => ({
             console.log('Attempting signup...')
             const data = await authService.signup(email, password, username)
             console.log('Signup response:', data)
-            set.getState().setSession(data)
-            console.log('User set, signup complete')
+            // Don't set session yet - user needs to verify email first
             return data
         } catch (error) {
             console.error('Signup error in store:', error)

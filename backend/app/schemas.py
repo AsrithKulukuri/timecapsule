@@ -27,6 +27,15 @@ class OtpVerifyRequest(BaseModel):
     new_password: Optional[str] = Field(default=None, min_length=6)
 
 
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class EmailVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]{6}$")
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

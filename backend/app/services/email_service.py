@@ -46,6 +46,19 @@ class EmailService:
             return False
 
     @staticmethod
+    def send_verification_email(to_email: str, verification_code: str) -> bool:
+        html = f"""
+        <h1>Verify Your Email</h1>
+        <p>Welcome to Time Capsule! Please verify your email to get started.</p>
+        <p><strong>Your verification code is:</strong></p>
+        <h2 style="background: #f0f0f0; padding: 10px; border-radius: 5px;">{verification_code}</h2>
+        <p>This code will expire in 15 minutes.</p>
+        <p>If you didn't create a Time Capsule account, please ignore this email.</p>
+        """
+        text = f"Verify your email with this code: {verification_code}"
+        return EmailService.send_email(to_email, "Verify Your Time Capsule Email", html, text)
+
+    @staticmethod
     def send_capsule_created_email(to_email: str, capsule: dict) -> bool:
         unlock_date = capsule.get("unlock_date")
         subject = "Your time capsule is created"

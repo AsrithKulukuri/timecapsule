@@ -64,6 +64,30 @@ export const authService = {
         }
     },
 
+    async requestEmailVerification(email) {
+        try {
+            console.log('AuthService: Calling /api/auth/email/verify-request...')
+            const response = await api.post('/api/auth/email/verify-request', { email })
+            console.log('AuthService: Email verification request response:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('AuthService: Email verification request error:', error.response?.data || error.message)
+            throw error
+        }
+    },
+
+    async verifyEmail(email, code) {
+        try {
+            console.log('AuthService: Calling /api/auth/email/verify...')
+            const response = await api.post('/api/auth/email/verify', { email, code })
+            console.log('AuthService: Email verify response:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('AuthService: Email verify error:', error.response?.data || error.message)
+            throw error
+        }
+    },
+
     async logout() {
         try {
             console.log('AuthService: Calling /api/auth/logout...')
