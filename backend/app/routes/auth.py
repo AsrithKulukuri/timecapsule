@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timedelta, timezone
 import secrets
-import json
-from datetime import datetime, timedelta
 from app.supabase_client import supabase, supabase_admin
 from app.schemas import UserSignup, UserLogin, TokenResponse, OtpStartRequest, OtpVerifyRequest, EmailVerificationRequest, EmailVerifyRequest
 from app.dependencies import get_current_user
@@ -172,7 +171,7 @@ async def request_email_verification(payload: EmailVerificationRequest):
         metadata = user.user_metadata.copy() if hasattr(user, 'user_metadata') else {}
         metadata.update({
             "verification_code": verification_code,
-            "verification_expires_at": (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+            "verification_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
         })
 
         supabase_admin.auth.admin.update_user_by_id(
@@ -243,7 +242,7 @@ async def verify_email(payload: EmailVerifyRequest):
         # Check if code expired
         if expires_at:
             expires_dt = datetime.fromisoformat(expires_at)
-            if datetime.utcnow() > expires_dt:
+            if datetime.now(timezone.utc) > expires_dt:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Verification code expired"

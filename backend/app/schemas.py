@@ -39,7 +39,7 @@ class EmailVerifyRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user: dict
+    user: dict[str, object]
 
 
 # Capsule Schemas
