@@ -18,41 +18,55 @@ class CapsuleService:
                 detail="Unlock date must be in the future"
             )
 
-        # Prepare capsule data
-        capsule_dict = {
-            "title": capsule_data.title,
-            "description": capsule_data.description,
-            "unlock_date": capsule_data.unlock_date.isoformat(),
-            "owner_id": user_id,
-            "is_group": capsule_data.is_group,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
+        try:
+            # Prepare capsule data
+            capsule_dict = {
+                "title": capsule_data.title,
+                "description": capsule_data.description,
+                "unlock_date": capsule_data.unlock_date.isoformat(),
+                "owner_id": user_id,
+                "is_group": capsule_data.is_group,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
 
-        # Insert capsule
-        response = supabase_admin.table(
-            "capsules").insert(capsule_dict).execute()
+            print(f"Inserting capsule: {capsule_dict}")
 
-        if not response.data:
+            # Insert capsule
+            response = supabase_admin.table(
+                "capsules").insert(capsule_dict).execute()
+
+            print(f"Insert response: {response}")
+            print(f"Response data: {response.data if hasattr(response, 'data') else 'NO DATA ATTR'}")
+
+            if not response.data:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to create capsule"
+                )
+
+            capsule = response.data[0]
+
+            # If group capsule, add members
+            if capsule_data.is_group and capsule_data.group_members:
+                members_data = [
+                    {
+                        "capsule_id": capsule["id"],
+                        "user_id": member_id
+                    }
+                    for member_id in capsule_data.group_members
+                ]
+                supabase_admin.table("capsule_members").insert(
+                    members_data).execute()
+
+            return capsule
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Capsule creation database error: {type(e).__name__}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create capsule"
+                detail=f"Failed to create capsule: {str(e)}"
             )
-
-        capsule = response.data[0]
-
-        # If group capsule, add members
-        if capsule_data.is_group and capsule_data.group_members:
-            members_data = [
-                {
-                    "capsule_id": capsule["id"],
-                    "user_id": member_id
-                }
-                for member_id in capsule_data.group_members
-            ]
-            supabase_admin.table("capsule_members").insert(
-                members_data).execute()
-
-        return capsule
 
     @staticmethod
     async def get_user_capsules(user_id: str) -> List[dict]:
