@@ -19,6 +19,8 @@ CREATE TABLE capsules (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     is_group BOOLEAN DEFAULT FALSE,
     owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_email_sent_at TIMESTAMPTZ,
+    reminder_email_sent_at TIMESTAMPTZ,
     
     -- Constraints
     CONSTRAINT unlock_date_future CHECK (unlock_date > created_at)
@@ -54,6 +56,7 @@ CREATE TABLE capsule_members (
 
 CREATE INDEX idx_capsules_owner ON capsules(owner_id);
 CREATE INDEX idx_capsules_unlock_date ON capsules(unlock_date);
+CREATE INDEX idx_capsules_reminder_sent ON capsules(reminder_email_sent_at);
 CREATE INDEX idx_media_capsule ON media(capsule_id);
 CREATE INDEX idx_capsule_members_user ON capsule_members(user_id);
 CREATE INDEX idx_capsule_members_capsule ON capsule_members(capsule_id);
@@ -215,3 +218,12 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- Storage RLS Policies (apply in Supabase Dashboard SQL editor):
 -- Users can upload to their own folder
 -- Users can only access media from unlocked capsules they have access to
+
+-- ============================================
+-- OPTIONAL MIGRATION FOR EXISTING DATABASES
+-- ============================================
+
+-- Add notification tracking columns if missing
+-- ALTER TABLE capsules ADD COLUMN IF NOT EXISTS created_email_sent_at TIMESTAMPTZ;
+-- ALTER TABLE capsules ADD COLUMN IF NOT EXISTS reminder_email_sent_at TIMESTAMPTZ;
+-- CREATE INDEX IF NOT EXISTS idx_capsules_reminder_sent ON capsules(reminder_email_sent_at);

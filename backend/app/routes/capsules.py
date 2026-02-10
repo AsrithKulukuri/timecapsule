@@ -3,6 +3,9 @@ from typing import List
 from app.schemas import CapsuleCreate, CapsuleUpdate, CapsuleResponse
 from app.dependencies import get_current_user
 from app.services.capsule_service import CapsuleService
+from app.services.email_service import EmailService
+from app.supabase_client import supabase_admin
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -17,6 +20,16 @@ async def create_capsule(
     Can be personal or group capsule.
     """
     capsule = await CapsuleService.create_capsule(capsule_data, current_user["id"])
+
+    # Send creation notification email
+    if current_user.get("email"):
+        sent = EmailService.send_capsule_created_email(
+            current_user["email"], capsule)
+        if sent:
+            supabase_admin.table("capsules")\
+                .update({"created_email_sent_at": datetime.now(timezone.utc).isoformat()})\
+                .eq("id", capsule["id"])\
+                .execute()
     return capsule
 
 

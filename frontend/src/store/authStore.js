@@ -5,6 +5,14 @@ export const useAuthStore = create((set) => ({
     user: null,
     loading: true,
 
+    setSession: (data) => {
+        if (!data || !data.access_token) {
+            throw new Error('No access token in response')
+        }
+        localStorage.setItem('access_token', data.access_token)
+        set({ user: data.user })
+    },
+
     setUser: (user) => set({ user }),
 
     login: async (email, password) => {
@@ -12,19 +20,24 @@ export const useAuthStore = create((set) => ({
             console.log('Attempting login...')
             const data = await authService.login(email, password)
             console.log('Login response:', data)
-
-            if (!data || !data.access_token) {
-                throw new Error('No access token in response')
-            }
-
-            console.log('Saving token to localStorage...')
-            localStorage.setItem('access_token', data.access_token)
-            console.log('Token saved, setting user...')
-            set({ user: data.user })
+            set.getState().setSession(data)
             console.log('User set, login complete')
             return data
         } catch (error) {
             console.error('Login error in store:', error)
+            throw error
+        }
+    },
+
+    loginWithOtp: async (email, token) => {
+        try {
+            console.log('Attempting OTP login...')
+            const data = await authService.verifyOtp(email, token, 'login')
+            console.log('OTP login response:', data)
+            set.getState().setSession(data)
+            return data
+        } catch (error) {
+            console.error('OTP login error in store:', error)
             throw error
         }
     },
@@ -34,15 +47,7 @@ export const useAuthStore = create((set) => ({
             console.log('Attempting signup...')
             const data = await authService.signup(email, password, username)
             console.log('Signup response:', data)
-
-            if (!data || !data.access_token) {
-                throw new Error('No access token in signup response')
-            }
-
-            console.log('Saving token to localStorage...')
-            localStorage.setItem('access_token', data.access_token)
-            console.log('Token saved, setting user...')
-            set({ user: data.user })
+            set.getState().setSession(data)
             console.log('User set, signup complete')
             return data
         } catch (error) {

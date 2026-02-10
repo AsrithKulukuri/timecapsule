@@ -173,10 +173,10 @@ function MediaItem({ media, isUnlocked, onDelete }) {
                                     )}
                                 </div>
                             )}
-                    </>
-                )}
-            </div>
-        </motion.div>
+                        </>
+                    )}
+                </div>
+            </motion.div>
 
             {/* Modal for enlarged media view */}
             <AnimatePresence>
@@ -200,7 +200,7 @@ function MediaItem({ media, isUnlocked, onDelete }) {
                                 alt={media.filename}
                                 className="max-w-full max-h-screen object-contain rounded-lg"
                             />
-                            
+
                             {/* Close button */}
                             <button
                                 onClick={() => setIsModalOpen(false)}

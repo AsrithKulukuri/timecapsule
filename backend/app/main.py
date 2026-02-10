@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, capsules, media
+from app.routes import auth, capsules, media, notify
 from app.config import settings
 import logging
 
@@ -50,6 +50,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(capsules.router, prefix="/api/capsules", tags=["Capsules"])
 app.include_router(media.router, prefix="/api/media", tags=["Media"])
+app.include_router(notify.router, prefix="/api/notify", tags=["Notifications"])
 
 
 @app.get("/")

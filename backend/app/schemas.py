@@ -15,6 +15,18 @@ class UserLogin(BaseModel):
     password: str
 
 
+class OtpStartRequest(BaseModel):
+    email: EmailStr
+    purpose: str = Field(..., pattern="^(login|recovery)$")
+
+
+class OtpVerifyRequest(BaseModel):
+    email: EmailStr
+    token: str = Field(..., min_length=4, max_length=12)
+    purpose: str = Field(..., pattern="^(login|recovery)$")
+    new_password: Optional[str] = Field(default=None, min_length=6)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

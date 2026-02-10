@@ -32,6 +32,38 @@ export const authService = {
         }
     },
 
+    async requestOtp(email, purpose) {
+        try {
+            console.log('AuthService: Calling /api/auth/otp/start...')
+            const response = await api.post('/api/auth/otp/start', {
+                email,
+                purpose,
+            })
+            console.log('AuthService: OTP start response:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('AuthService: OTP start error:', error.response?.data || error.message)
+            throw error
+        }
+    },
+
+    async verifyOtp(email, token, purpose, newPassword) {
+        try {
+            console.log('AuthService: Calling /api/auth/otp/verify...')
+            const response = await api.post('/api/auth/otp/verify', {
+                email,
+                token,
+                purpose,
+                new_password: newPassword || null,
+            })
+            console.log('AuthService: OTP verify response:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('AuthService: OTP verify error:', error.response?.data || error.message)
+            throw error
+        }
+    },
+
     async logout() {
         try {
             console.log('AuthService: Calling /api/auth/logout...')

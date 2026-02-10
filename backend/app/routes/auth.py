@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.supabase_client import supabase
-from app.schemas import UserSignup, UserLogin, TokenResponse
+from app.supabase_client import supabase, supabase_admin
+from app.schemas import UserSignup, UserLogin, TokenResponse, OtpStartRequest, OtpVerifyRequest
 from app.dependencies import get_current_user
 
 router = APIRouter()
@@ -104,6 +104,86 @@ async def login(user_data: UserLogin):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
+        )
+
+
+@router.post("/otp/start")
+async def otp_start(payload: OtpStartRequest):
+    """
+    Send an OTP for login or recovery.
+    """
+    try:
+        supabase.auth.sign_in_with_otp({
+            "email": payload.email,
+            "options": {
+                "should_create_user": False
+            }
+        })
+        return {"message": "OTP sent"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to send OTP: {str(e)}"
+        )
+
+
+@router.post("/otp/verify")
+async def otp_verify(payload: OtpVerifyRequest):
+    """
+    Verify an OTP for login or password recovery.
+    """
+    try:
+        response = supabase.auth.verify_otp({
+            "email": payload.email,
+            "token": payload.token,
+            "type": "email"
+        })
+
+        user = getattr(response, 'user', None)
+        session = getattr(response, 'session', None)
+
+        if payload.purpose == "recovery":
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid OTP"
+                )
+            if not payload.new_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="New password is required"
+                )
+            supabase_admin.auth.admin.update_user_by_id(
+                user.id,
+                {"password": payload.new_password}
+            )
+            return {"message": "Password updated"}
+
+        if not user or not session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid OTP"
+            )
+
+        username = user.user_metadata.get(
+            "username", "") if hasattr(user, 'user_metadata') else ""
+
+        return {
+            "access_token": session.access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": username
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"OTP verification failed: {str(e)}"
         )
 
 

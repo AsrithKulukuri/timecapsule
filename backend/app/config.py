@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Email (Resend)
+    RESEND_API_KEY: Optional[str] = None
+    RESEND_FROM: Optional[str] = None
+
+    # Notifications
+    NOTIFY_SECRET: str = "change-me"
+    NOTIFY_WINDOW_HOURS: int = 24
+
     # Production flag
     ENVIRONMENT: str = "development"
 
