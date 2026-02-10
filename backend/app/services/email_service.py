@@ -1,7 +1,8 @@
 from datetime import datetime
 import logging
 from typing import Optional
-import httpx
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     @staticmethod
     def _is_configured() -> bool:
-        return bool(settings.RESEND_API_KEY and settings.RESEND_FROM)
+        return bool(settings.SENDGRID_API_KEY and settings.SENDGRID_FROM)
 
     @staticmethod
     def send_email(to_email: str, subject: str, html: str, text: Optional[str] = None) -> bool:
@@ -19,36 +20,30 @@ class EmailService:
             return False
 
         logger.info(f"Sending email to {to_email} with subject: {subject}")
-        logger.info(f"Using API key: {settings.RESEND_API_KEY[:20]}...")
-        logger.info(f"From: {settings.RESEND_FROM}")
-
-        payload = {
-            "from": settings.RESEND_FROM,
-            "to": [to_email],
-            "subject": subject,
-            "html": html,
-        }
-        if text:
-            payload["text"] = text
 
         try:
-            logger.info(f"Posting to Resend API with payload: {payload}")
-            response = httpx.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {settings.RESEND_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-                timeout=10.0,
+            message = Mail(
+                from_email=settings.SENDGRID_FROM,
+                to_emails=to_email,
+                subject=subject,
+                html_content=html
             )
-            logger.info(f"Resend response status: {response.status_code}")
-            logger.info(f"Resend response: {response.text}")
+
+            if text:
+                message.plain_text_content = text
+
+            sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+            response = sg.send(message)
+
+            logger.info(f"SendGrid response status: {response.status_code}")
+
             if response.status_code >= 400:
-                logger.error(f"Resend error: {response.text}")
+                logger.error(f"SendGrid error: {response.body}")
                 return False
+
             logger.info(f"Email sent successfully to {to_email}")
             return True
+
         except Exception as exc:
             logger.error(f"Email send failed: {str(exc)}", exc_info=True)
             return False

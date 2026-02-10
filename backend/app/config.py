@@ -20,9 +20,9 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
 
-    # Email (Resend)
-    RESEND_API_KEY: Optional[str] = None
-    RESEND_FROM: Optional[str] = None
+    # Email (SendGrid)
+    SENDGRID_API_KEY: Optional[str] = None
+    SENDGRID_FROM: Optional[str] = None
 
     # Notifications
     NOTIFY_SECRET: str = "change-me"
